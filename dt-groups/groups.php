@@ -19,8 +19,8 @@ if ( !defined( 'ABSPATH' ) ) {
 class Disciple_Tools_Groups extends Disciple_Tools_Posts
 {
 
-    public static $address_types;
-    public static $group_fields;
+    private static $address_types = null;
+    private static $group_fields = null;
     public static $group_connection_types;
     public static $channel_list;
 
@@ -29,26 +29,34 @@ class Disciple_Tools_Groups extends Disciple_Tools_Posts
      */
     public function __construct()
     {
-        add_action(
-            'init',
-            function() {
-                self::$address_types = dt_address_metabox()->get_address_type_list( "groups" );
-                self::$group_fields = Disciple_Tools_Groups_Post_Type::instance()->get_custom_fields_settings();
-                self::$group_connection_types = [
-                    "members",
-                    "parent_groups",
-                    "child_groups",
-                    "locations",
-                    "people_groups",
-                    "leaders"
-                ];
-                self::$channel_list = [
-                    "address"
-                ];
-            }
-        );
+        self::$group_connection_types = [
+            "members",
+            "parent_groups",
+            "child_groups",
+            "locations",
+            "people_groups",
+            "leaders"
+        ];
+        self::$channel_list = [
+            "address"
+        ];
         parent::__construct();
     }
+
+    public static function get_address_types(){
+        if ( self::$address_types === null ){
+            self::$address_types = dt_address_metabox()->get_address_type_list( "groups" );
+        }
+        return self::$address_types;
+    }
+
+    public static function get_group_fields(){
+        if ( self::$group_fields === null ){
+            self::$group_fields = Disciple_Tools_Groups_Post_Type::instance()->get_custom_fields_settings();
+        }
+        return self::$group_fields;
+    }
+
 
     /**
      * @param  $search_string
@@ -181,6 +189,7 @@ class Disciple_Tools_Groups extends Disciple_Tools_Posts
             $fields["parent_groups"] = $parent_groups;
 
             $meta_fields = get_post_custom( $group_id );
+            $group_fields = self::get_group_fields();
             foreach ( $meta_fields as $key => $value ) {
                 if ( strpos( $key, "address_" ) !== false) {
                     if ( strpos( $key, "_details" ) === false ) {
@@ -192,12 +201,12 @@ class Disciple_Tools_Groups extends Disciple_Tools_Posts
                         $details["value"] = $value[0];
                         $details["key"] = $key;
                         if ( isset( $details["type"] ) ) {
-                            $details["type_label"] = self::$address_types[ $details["type"] ]["label"];
+                            $details["type_label"] = self::get_address_types()[ $details["type"] ]["label"];
                         }
                         $fields["contact_address"][] = $details;
                     }
-                } elseif ( isset( self::$group_fields[ $key ] ) && self::$group_fields[ $key ]["type"] == "key_select" ) {
-                    $label = self::$group_fields[ $key ]["default"][ $value[0] ] ?? current( self::$group_fields[ $key ]["default"] );
+                } elseif ( isset( $group_fields[ $key ] ) && $group_fields[ $key ]["type"] == "key_select" ) {
+                    $label = $group_fields[ $key ]["default"][ $value[0] ] ?? current( $group_fields[ $key ]["default"] );
                     $fields[ $key ] = [
                     "key" => $value[0],
                     "label" => $label
@@ -221,9 +230,9 @@ class Disciple_Tools_Groups extends Disciple_Tools_Posts
                             }
                         }
                     }
-                } else if ( isset( self::$group_fields[ $key ] ) && self::$group_fields[ $key ]['type'] === 'multi_select' ){
+                } else if ( isset( $group_fields[ $key ] ) && $group_fields[ $key ]['type'] === 'multi_select' ){
                     $fields[ $key ] = $value;
-                } else if ( isset( self::$group_fields[ $key ] ) && self::$group_fields[ $key ]['type'] === 'array' ){
+                } else if ( isset( $group_fields[ $key ] ) && $group_fields[ $key ]['type'] === 'array' ){
                     $fields[ $key ] = maybe_unserialize( $value[0] );
                 } else {
                     $fields[ $key ] = $value[0];
@@ -272,8 +281,9 @@ class Disciple_Tools_Groups extends Disciple_Tools_Posts
     }
 
     private static function parse_multi_select_fields( $contact_id, $fields, $existing_contact = null ){
+        $group_fields = self::get_group_fields();
         foreach ( $fields as $field_key => $field ){
-            if ( isset( self::$group_fields[$field_key] ) && self::$group_fields[$field_key]["type"] === "multi_select" ){
+            if ( isset( $group_fields[$field_key] ) && $group_fields[$field_key]["type"] === "multi_select" ){
                 if ( !isset( $field["values"] )){
                     return new WP_Error( __FUNCTION__, __( "missing values field on:" ) . " " . $field_key );
                 }
@@ -499,10 +509,11 @@ class Disciple_Tools_Groups extends Disciple_Tools_Posts
                 self::add_shared( "groups", $group_id, $user_id, null, false );
             }
         }
+        $group_fields = self::get_group_fields();
         $fields["last_modified"] = time(); //make sure the last modified field is updated.
         foreach ( $fields as $field_id => $value ) {
             if ( !self::is_key_contact_method_or_connection( $field_id )){
-                $field_type = self::$group_fields[$field_id]["type"] ?? '';
+                $field_type = $group_fields[$field_id]["type"] ?? '';
                 //we handle multi_select above.
                 if ( $field_type && $field_type !== "multi_select" ){
                     update_post_meta( $group_id, $field_id, $value );

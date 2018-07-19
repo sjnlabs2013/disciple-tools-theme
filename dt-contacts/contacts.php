@@ -14,9 +14,9 @@ if ( !defined( 'ABSPATH' ) ) {
  */
 class Disciple_Tools_Contacts extends Disciple_Tools_Posts
 {
-    public static $contact_fields;
-    public static $channel_list;
-    public static $address_types;
+    private static $contact_fields = null;
+    private static $channel_list = null;
+    private static $address_types = null;
     public static $contact_connection_types;
 
     /**
@@ -24,9 +24,6 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
      */
     public function __construct()
     {
-        self::$contact_fields = Disciple_Tools_Contact_Post_Type::instance()->get_custom_fields_settings();
-        self::$channel_list = Disciple_Tools_Contact_Post_Type::instance()->get_channels_list();
-        self::$address_types = dt_get_option( "dt_site_custom_lists" )["contact_address_types"];
         self::$contact_connection_types = [
             "locations",
             "groups",
@@ -98,6 +95,9 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
      */
     public static function get_contact_fields()
     {
+        if ( self::$contact_fields === null ){
+            self::$contact_fields = Disciple_Tools_Contact_Post_Type::instance()->get_custom_fields_settings();
+        }
         return self::$contact_fields;
     }
 
@@ -106,7 +106,17 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
      */
     public static function get_channel_list()
     {
+        if ( self::$channel_list === null ){
+            self::$channel_list = Disciple_Tools_Contact_Post_Type::instance()->get_channels_list();
+        }
         return self::$channel_list;
+    }
+
+    public static function get_address_types(){
+        if ( self::$address_types === null ){
+            self::$address_types = dt_get_option( "dt_site_custom_lists" )["contact_address_types"];
+        }
+        return self::$address_types;
     }
 
 
@@ -120,10 +130,10 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
         }
         if ( strpos( $field, "contact_" ) === 0 ){
             $channel = explode( '_', $field );
-            if ( isset( $channel[1] ) && self::$channel_list[ $channel[1] ] ){
+            if ( isset( $channel[1] ) && self::get_channel_list()[ $channel[1] ] ){
                 return [
                     "type" => "contact_method",
-                    "name" => self::$channel_list[ $channel[1] ]["label"],
+                    "name" => self::get_channel_list()[ $channel[1] ]["label"],
                     "channel" => $channel[1]
                 ];
             }
@@ -138,7 +148,7 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
         if ( $contact_id ){
             $contact_fields = Disciple_Tools_Contact_Post_Type::instance()->get_custom_fields_settings( isset( $contact_id ), $contact_id );
         } else {
-            $contact_fields = self::$contact_fields;
+            $contact_fields = self::get_contact_fields();
         }
         if ( isset( $contact_fields[$field] ) ){
             return $contact_fields[ $field ];
@@ -242,13 +252,14 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
 
         $contact_methods_and_connections = [];
         $multi_select_fields = [];
+        $contact_fields = self::get_contact_fields();
         foreach ( $fields as $field_key => $field_value ){
             if ( self::is_key_contact_method_or_connection( $field_key )){
                 $contact_methods_and_connections[$field_key] = $field_value;
                 unset( $fields[$field_key] );
             }
-            if ( isset( self::$contact_fields[$field_key] ) &&
-                 self::$contact_fields[$field_key]["type"] === "multi_select" ){
+            if ( isset( $contact_fields[$field_key] ) &&
+                 $contact_fields[$field_key]["type"] === "multi_select" ){
                 $multi_select_fields[$field_key] = $field_value;
                 unset( $fields[$field_key] );
             }
@@ -323,7 +334,7 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
 
     private static function is_key_contact_method_or_connection( $key ) {
         $channel_keys = [];
-        foreach ( self::$channel_list as $channel_key => $channel_value ) {
+        foreach ( self::get_channel_list() as $channel_key => $channel_value ) {
             $channel_keys[] = "contact_" . $channel_key;
         }
         return in_array( $key, self::$contact_connection_types ) || in_array( $key, $channel_keys );
@@ -355,8 +366,9 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
     }
 
     private static function parse_multi_select_fields( $contact_id, $fields, $existing_contact = null ){
+        $contact_fields = self::get_contact_fields();
         foreach ( $fields as $field_key => $field ){
-            if ( isset( self::$contact_fields[$field_key] ) && self::$contact_fields[$field_key]["type"] === "multi_select" ){
+            if ( isset( $contact_fields[$field_key] ) && $contact_fields[$field_key]["type"] === "multi_select" ){
                 if ( !isset( $field["values"] )){
                     return new WP_Error( __FUNCTION__, __( "missing values field on:" ) . " " . $field_key );
                 }
@@ -383,7 +395,7 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
     }
 
     private static function parse_contact_methods( $contact_id, $fields, $existing_contact = null ){
-        $contact_details_field_keys = array_keys( self::$channel_list );
+        $contact_details_field_keys = array_keys( self::get_channel_list() );
         // update contact details (phone, facebook, etc)
         foreach ( $contact_details_field_keys as $channel_key ){
             $details_key = "contact_" . $channel_key;
@@ -618,6 +630,7 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
         }
 
 
+        $contact_fields = self::get_contact_fields();
         $fields["last_modified"] = time(); //make sure the last modified field is updated.
         foreach ( $fields as $field_id => $value ) {
             if ( !self::is_key_contact_method_or_connection( $field_id ) ) {
@@ -628,7 +641,7 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
                     $value = "no";
                 }
 
-                $field_type = self::$contact_fields[$field_id]["type"] ?? '';
+                $field_type = $contact_fields[$field_id]["type"] ?? '';
                 //we handle multi_select above.
                 if ( $field_type && $field_type !== "multi_select" ){
                     update_post_meta( $contact_id, $field_id, $value );
@@ -922,7 +935,7 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
             $type = explode( '-', $key )[1];
 
             $new_meta_key = '';
-            if ( isset( self::$channel_list[ $type ] ) ) {
+            if ( isset( self::get_channel_list()[ $type ] ) ) {
                 //check if this is a new field and is in the channel list
                 $new_meta_key = Disciple_Tools_Contact_Post_Type::instance()->create_channel_metakey( $type, "contact" );
             }
@@ -971,7 +984,7 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
             $type = explode( '-', $key )[1];
 
             $new_meta_key = '';
-            if ( isset( self::$channel_list[ $type ] ) ) {
+            if ( isset( self::get_channel_list()[ $type ] ) ) {
                 //check if this is a new field and is in the channel list
                 $new_meta_key = Disciple_Tools_Contact_Post_Type::instance()->create_channel_metakey( $type, "contact" );
             }
@@ -1096,6 +1109,8 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
         }
 
         $contact = get_post( $contact_id );
+        $contact_fields = self::get_contact_fields();
+        $channel_list = self::get_channel_list();
         if ( $contact ) {
             $fields = [];
 
@@ -1208,10 +1223,7 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
             $meta_fields = get_post_custom( $contact_id );
             foreach ( $meta_fields as $key => $value ) {
                 //if is contact details and is in a channel
-                if ( !isset( self::$channel_list )){
-                    self::$channel_list = Disciple_Tools_Contact_Post_Type::instance()->get_channels_list();
-                }
-                if ( strpos( $key, "contact_" ) === 0 && isset( self::$channel_list[ explode( '_', $key )[1] ] ) ) {
+                if ( strpos( $key, "contact_" ) === 0 && isset( $channel_list[ explode( '_', $key )[1] ] ) ) {
                     if ( strpos( $key, "details" ) === false ) {
                         $type = explode( '_', $key )[1];
                         $fields[ "contact_" . $type ][] = self::format_contact_details( $meta_fields, $type, $key, $value[0] );
@@ -1226,12 +1238,12 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
                         $details["value"] = $value[0];
                         $details["key"] = $key;
                         if ( isset( $details["type"] ) ) {
-                            $details["type_label"] = self::$address_types[ $details["type"] ]["label"];
+                            $details["type_label"] = self::get_address_types()[ $details["type"] ]["label"];
                         }
                         $fields["address"][] = $details;
                     }
-                } elseif ( isset( self::$contact_fields[ $key ] ) && self::$contact_fields[ $key ]["type"] == "key_select" ) {
-                    $label = self::$contact_fields[ $key ]["default"][ $value[0] ] ?? current( self::$contact_fields[ $key ]["default"] );
+                } elseif ( isset( $contact_fields[ $key ] ) && $contact_fields[ $key ]["type"] == "key_select" ) {
+                    $label = $contact_fields[ $key ]["default"][ $value[0] ] ?? current( $contact_fields[ $key ]["default"] );
                     $fields[ $key ] = [
                     "key" => $value[0],
                     "label" => $label
@@ -1253,9 +1265,9 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
                             }
                         }
                     }
-                } else if ( isset( self::$contact_fields[ $key ] ) && self::$contact_fields[ $key ]['type'] === 'multi_select' ){
+                } else if ( isset( $contact_fields[ $key ] ) && $contact_fields[ $key ]['type'] === 'multi_select' ){
                     $fields[ $key ] = $value;
-                } else if ( isset( self::$contact_fields[ $key ] ) && self::$contact_fields[ $key ]['type'] === 'array' ){
+                } else if ( isset( $contact_fields[ $key ] ) && $contact_fields[ $key ]['type'] === 'array' ){
                     $fields[ $key ] = maybe_unserialize( $value[0] );
                 } else {
                     $fields[ $key ] = $value[0];
@@ -1297,7 +1309,7 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
         $details["value"] = $value;
         $details["key"] = $key;
         if ( isset( $details["type"] ) ) {
-            $details["type_label"] = self::$channel_list[ $type ]["types"][ $details["type"] ]["label"];
+            $details["type_label"] = self::get_channel_list()[ $type ]["types"][ $details["type"] ]["label"];
         }
 
         return $details;
@@ -1679,7 +1691,7 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
      */
     public static function update_seeker_path( int $contact_id, string $path_option, $check_permissions = true )
     {
-        $seeker_path_options = self::$contact_fields["seeker_path"]["default"];
+        $seeker_path_options = self::get_contact_fields()["seeker_path"]["default"];
         $option_keys = array_keys( $seeker_path_options );
         $current_seeker_path = get_post_meta( $contact_id, "seeker_path", true );
         $current_index = array_search( $current_seeker_path, $option_keys );
@@ -1849,7 +1861,7 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
                 "accepted" => 'yes'
             ];
             self::update_contact( $contact_id, $update, true );
-            return [ "overall_status" => self::$contact_fields["overall_status"]["default"]['active'] ];
+            return [ "overall_status" => self::get_contact_fields()["overall_status"]["default"]['active'] ];
         } else {
             $assign_to_id = 0;
             $last_activity = self::get_most_recent_activity_for_field( $contact_id, "assigned_to" );

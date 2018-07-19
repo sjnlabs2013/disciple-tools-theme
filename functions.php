@@ -300,7 +300,6 @@ else {
             require_once( get_template_directory() . '/dt-groups/groups-post-type.php' );
             $this->post_types['groups'] = Disciple_Tools_Groups_Post_Type::instance();
             require_once( get_template_directory() . '/dt-groups/groups-template.php' ); // Functions to support theme
-            require_once( get_template_directory() . '/dt-groups/groups.php' );
             require_once( get_template_directory() . '/dt-groups/groups-endpoints.php' ); // builds rest endpoints
             $this->endpoints['groups'] = Disciple_Tools_Groups_Endpoints::instance();
 
