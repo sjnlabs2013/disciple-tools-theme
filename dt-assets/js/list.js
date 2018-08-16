@@ -345,6 +345,15 @@
       query.overall_status = ["active"]
       query.seeker_path = ["none"]
       filter.labels = [{ id:"all", name:"Contact attempt needed", field: "seeker_path"}]
+    } else if ( currentView === "subassigned" ) {
+      query.subassigned = ["me"]
+      query.assigned_to = [];
+      filter.labels = [{ id:"subassigned", name:"Subassigned to me", field: "subassigned"}]
+    } else if ( currentView === "subassigned_update_needed" ) {
+      query.subassigned = ["me"]
+      query.assigned_to = [];
+      query.requires_update = ["yes"];
+      filter.labels = [{ id:"subassigned_update_needed", name:"Subassigned and update needed", field: "subassigned"}]
     } else if ( currentView === "custom_filter"){
       let filterId = checked.data("id")
       filter = _.find(customFilters, {ID:filterId})

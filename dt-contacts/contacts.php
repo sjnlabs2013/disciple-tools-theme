@@ -2063,6 +2063,40 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
             as my_contacts,
             (SELECT count(a.ID)
               FROM $wpdb->posts as a
+                INNER JOIN $wpdb->p2p as from_p2p ON ( from_p2p.p2p_to = a.ID )
+                AND from_p2p.p2p_type = 'contacts_to_subassigned'
+                AND from_p2p.p2p_from = (SELECT a.ID
+                FROM $wpdb->posts as a
+                  INNER JOIN $wpdb->postmeta as b
+                    ON a.ID=b.post_id
+                      AND b.meta_key = 'corresponds_to_user'
+                      AND b.meta_value = %s
+                  INNER JOIN $wpdb->postmeta as type
+                    ON a.ID=type.post_id AND type.meta_key = 'type'
+                    AND type.meta_value = 'user' 
+                WHERE a.post_status = 'publish')
+            ) as subassigned,
+            (SELECT count(a.ID)
+              FROM $wpdb->posts as a
+                INNER JOIN $wpdb->postmeta as b
+                    ON a.ID=b.post_id
+                    AND b.meta_key = 'requires_update'
+                    AND b.meta_value = 'yes'
+                INNER JOIN $wpdb->p2p as from_p2p ON ( from_p2p.p2p_to = a.ID )
+                AND from_p2p.p2p_type = 'contacts_to_subassigned'
+                AND from_p2p.p2p_from = (SELECT a.ID
+                FROM $wpdb->posts as a
+                  INNER JOIN $wpdb->postmeta as b
+                    ON a.ID=b.post_id
+                      AND b.meta_key = 'corresponds_to_user'
+                      AND b.meta_value = %s
+                  INNER JOIN $wpdb->postmeta as type
+                    ON a.ID=type.post_id AND type.meta_key = 'type'
+                    AND type.meta_value = 'user' 
+                WHERE a.post_status = 'publish')
+            ) as subassigned_update_needed,
+            (SELECT count(a.ID)
+              FROM $wpdb->posts as a
                 JOIN $wpdb->postmeta as b
                   ON a.ID=b.post_id
                     AND b.meta_key = 'requires_update'
@@ -2167,6 +2201,8 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
             )
             as shared_with_me;
             ",
+            $user_id,
+            $user_id,
             $user_id,
             $user_id,
             $user_id,

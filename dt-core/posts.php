@@ -765,7 +765,11 @@ class Disciple_Tools_Posts
                 if ( $query_key === "subassigned" ) {
                     $subassigned_sql = "";
                     foreach ( $query_value as $subassigned ) {
-                        $l = get_post( $subassigned );
+                        if ( $subassigned == "me" ){
+                            $l = Disciple_Tools_Users::get_contact_for_user( $current_user->ID );
+                        } else {
+                            $l = get_post( $subassigned );
+                        }
                         if ( $l && $l->post_type === "contacts" ){
                             $subassigned_sql .= empty( $subassigned_sql ) ? $l->ID : ( ",".$l->ID );
                         }

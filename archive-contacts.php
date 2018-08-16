@@ -119,6 +119,20 @@ declare(strict_types=1);
                             <?php esc_html_e( "Contacts shared with me", "disciple_tools" ); ?>
                             <span class="list-view__count js-list-view-count" data-value="shared_with_me">.</span>
                         </label>
+                        <label class="list-view">
+                            <input type="radio" name="view" value="subassigned" class="js-list-view" autocomplete="off">
+                            <?php esc_html_e( "Contacts subassigned to me", "disciple_tools" ); ?>
+                            <span class="list-view__count js-list-view-count" data-value="subassigned">.</span>
+                        </label>
+                        <div class="list-views__sub">
+                            <label class="list-view">
+                                <input type="radio" name="view" value="subassigned_update_needed" class="js-list-view" autocomplete="off">
+                                <?php esc_html_e( "Update Needed", "disciple_tools" ); ?>
+                                <span class="list-view__count js-list-view-count" data-value="subassigned_update_needed">.</span>
+                            </label>
+                        </div>
+
+
 
                     </div>
                     <h5><?php esc_html_e( 'Custom Filters', "disciple_tools" ); ?></h5>
