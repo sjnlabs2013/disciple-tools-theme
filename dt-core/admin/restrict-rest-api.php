@@ -63,26 +63,42 @@ function dt_dra_disable_via_filters() {
  * @return WP_Error
  */
 function dt_dra_only_allow_logged_in_rest_access( $access ) {
+
     $is_public = false;
+    $is_authenticated = false;
+
     /**
-     * External integrations to a Disciple Tools site can be done through the /dt-public/ route, which is left open to non-logged in external access
+     * External integrations to a Disciple Tools site can be done with authentication through the transfer_token
      */
-    if ( isset( $_SERVER['REQUEST_URI'] ) && strpos( sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ), '/dt-public/' ) !== false ) {
-        $is_public = true;
+    if ( !is_user_logged_in() ){
+        $body = json_decode( WP_REST_Server::get_raw_data(), true );
+        if ( isset( $body["transfer_token"] ) ){
+            $site_key = Site_Link_System::verify_transfer_token( $body['transfer_token'] );
+            if ( $site_key ){
+                $is_authenticated = true;
+            } else {
+                return new WP_Error(
+                    "contact_creation_error",
+                    "Invalid or missing transfer_token", [ 'status' => 401 ]
+                );
+            }
+        }
     }
+
+
     /**
      * JWT token authentication is also open on the Disciple Tools use of WP REST API
      */
-    if ( $_SERVER['REQUEST_URI'] == "/wp-json/jwt-auth/v1/token" || $_SERVER['REQUEST_URI'] == "/wp-json/jwt-auth/v1/token/validate" ) {
-        $is_public = true;
-    }
+//    if ( $_SERVER['REQUEST_URI'] == "/wp-json/jwt-auth/v1/token" || $_SERVER['REQUEST_URI'] == "/wp-json/jwt-auth/v1/token/validate" ) {
+//        $is_public = true;
+//    }
 
     $is_public = apply_filters( 'dt_allow_rest_access', $is_public );
 
     /**
      * All other requests to the REST API require a person to be logged in to make a REST Request.
      */
-    if ( !is_user_logged_in() && !$is_public ) {
+    if ( !is_user_logged_in() && !$is_public && !$is_authenticated ) {
         return new WP_Error( 'rest_cannot_access', __( 'Only authenticated users can access the REST API.', 'disciple_tools' ), [ 'status' => rest_authorization_required_code() ] );
     }
 
