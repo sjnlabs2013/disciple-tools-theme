@@ -209,6 +209,7 @@ else {
                 'groups/new'    => 'template-groups-new.php',
                 'contacts/mergedetails'    => 'template-merge-details.php',
                 'view-duplicates'    => 'template-view-duplicates.php',
+                'registered' => 'template-registered.php'
                 ];
 
                 $template_for_url = apply_filters( 'dt_templates_for_urls', $template_for_url );
@@ -465,7 +466,7 @@ else {
         if ( user_can( get_current_user_id(), 'access_contacts' ) ) {
             wp_safe_redirect( home_url( '/contacts' ) );
         } else {
-            wp_safe_redirect( home_url( '/settings' ) );
+            wp_safe_redirect( home_url( '/registered' ) );
         }
     }
 
