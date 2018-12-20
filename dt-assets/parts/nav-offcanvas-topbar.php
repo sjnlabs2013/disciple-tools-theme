@@ -70,6 +70,7 @@
 
                         <?php if ( user_can( get_current_user_id(), 'manage_dt' ) ) : ?>
                             <li><a href="<?php echo esc_url( get_admin_url() ); ?>"><?php esc_html_e( "Admin", "disciple_tools" ); ?></a></li>
+                            <li><a href="<?php echo esc_url( site_url( '/dispatch-tools/' ) ); ?>"><?php esc_html_e( "System Health", "disciple_tools" ); ?></a></li>
                         <?php endif; ?>
                         <li><a href="https://disciple-tools.readthedocs.io/en/latest/index.html" target="_blank" rel="noreferrer"><?php esc_html_e( 'Help', "disciple_tools" ) ?></a></li>
 

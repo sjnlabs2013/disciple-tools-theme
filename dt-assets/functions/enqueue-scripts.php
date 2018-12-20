@@ -313,5 +313,18 @@ function dt_site_scripts() {
         ) );
     }
 
+    if ( 'dispatch-tools' === $url_path ) {
+        dt_theme_enqueue_script( 'dt-dispatch-tools', 'dt-assets/js/dispatch-tools.js', array( 'jquery', 'lodash' ), true );
+        wp_localize_script(
+            'dt-dispatch-tools', 'wpDispatchToolsSettings', array(
+                'root' => esc_url_raw( rest_url() ),
+                'nonce' => wp_create_nonce( 'wp_rest' ),
+                'current_user_login' => wp_get_current_user()->user_login,
+                'current_user_id' => get_current_user_id(),
+                'diagnosis_results' => Disciple_Tools_Dispatch_Tools::get_diagnosis_results()
+            )
+        );
+    }
+
 }
 add_action( 'wp_enqueue_scripts', 'dt_site_scripts', 999 );

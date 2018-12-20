@@ -208,6 +208,7 @@ else {
                 'groups/new'    => 'template-groups-new.php',
                 'contacts/mergedetails'    => 'template-merge-details.php',
                 'view-duplicates'    => 'template-view-duplicates.php',
+                'dispatch-tools' => 'template-dispatch-tools.php'
                 ];
 
                 $template_for_url = apply_filters( 'dt_templates_for_urls', $template_for_url );
@@ -365,6 +366,8 @@ else {
              */
             require_once( get_template_directory() . '/dt-workflows/workflows.php' );
             $this->workflows = Disciple_Tools_Workflows::instance();
+
+            require_once( get_template_directory() . '/dt-core/tools/dispatch-tools.php' );
 
             /**
              * Network
