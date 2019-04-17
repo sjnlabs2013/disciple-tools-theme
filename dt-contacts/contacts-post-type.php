@@ -707,6 +707,12 @@ class Disciple_Tools_Contact_Post_Type
      */
     public function get_channels_list() {
         $channel_list = [
+            "fullname"     => [
+                "label" => __( 'Fullname', 'disciple_tools' ),
+                "types" => [
+                    "primary" => [ "label" => __( 'Primary', 'disciple_tools' ) ],
+                ],
+            ],
             "phone"     => [
                 "label" => __( 'Phone', 'disciple_tools' ),
                 "types" => [
