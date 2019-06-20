@@ -17,6 +17,13 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
     public static $channel_list;
     public static $address_types;
     public static $contact_connection_types;
+    
+    public static $contact_phone_headings;
+    public static $contact_address_headings;
+    public static $contact_email_headings;
+    public static $contact_name_headings;
+    public static $contact_gender_headings;
+    public static $contact_notes_headings;
 
     /**
      * Disciple_Tools_Contacts constructor.
@@ -38,6 +45,42 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
         add_action( "dt_contact_created", [ $this, "check_for_duplicates" ], 10, 2 );
         add_action( "dt_contact_updated", [ $this, "check_for_duplicates" ], 10, 2 );
         add_action( "dt_contact_updated", [ $this, "check_seeker_path" ], 10, 4 );
+    
+        self::$contact_phone_headings = [ 
+                                'contact_phone',
+                                'phone',
+                                'mobile',
+                                'telephone',
+                        ];
+        
+        self::$contact_address_headings = [
+                                'contact_address',
+                                'address'
+                        ];
+        
+        self::$contact_email_headings = [ 
+                                'contact_email',               
+                                'email',
+                                'email_address',
+                        ];
+        
+        self::$contact_name_headings = [ 
+                                'title',               
+                                'name',
+                                'contact_name',
+                        ];
+        self::$contact_gender_headings = [ 
+                                'gender',               
+                                'sex',
+                        ];
+        
+        self::$contact_notes_headings = [
+                                'cf_notes',
+                                'note', 
+                                'notes',
+                                'comment',
+                                'comments'
+            ];
 
         parent::__construct();
     }
@@ -159,6 +202,9 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
      * @return int | WP_Error
      */
     public static function create_contact( array $fields = [], $check_permissions = true, $silent = false ) {
+        
+//echo '<pre>'; print_r($fields); echo '</pre>';
+        
         if ( $check_permissions && !current_user_can( 'create_contacts' ) ) {
             return new WP_Error( __FUNCTION__, "You may not publish a contact", [ 'status' => 403 ] );
         }
@@ -2915,5 +2961,424 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
             }
         }
     }
+    
+    public static function get_contact_header_info(){
+/** //global $wpdb;
+//$query = "SELECT 
+//            `id`, 
+//            `entity`, 
+//            `name`, 
+//            `label`, 
+//            `sort_num`, 
+//            `rv`, 
+//            `rvs`, 
+//            `mv`, 
+//            `ty`, 
+//            `tyl`, 
+//            `tyf` 
+//            FROM `wp_dt_headers` 
+//            WHERE `entity` = 'contact' 
+//          ORDER BY `sort_num`";
+//$results = $wpdb->get_results($query, ARRAY_A);
+//return $results; */
+        
+        $data = [];      
+        $channels = Disciple_Tools_Contact_Post_Type::instance()->get_channels_list();
 
+        foreach($channels as $label=>$channel){
+            $data['contact_'.$label] = ['name'=>$channel['label'], 'type'=>'standard', 'defaults'=>null];
+        }
+        
+        $fields = self::get_contact_fields();
+        if(isset($fields)){ 
+            $data = array_merge($data,$fields);
+        }        
+        return $data;
+    }
+    
+/** //public static function get_contact_headers(){
+//
+//    //$data = array(
+//    //'title', 
+//    //'contact_fullname',
+//    //'contact_phone',
+//    //'contact_email',
+//    //'contact_address',
+//    //'gender',
+//    //'notes'
+//    //);
+//    //
+//    //$data = [];
+//    //global $wpdb;
+//    //$query = "SELECT `name` 
+//    //          FROM `wp_dt_headers` 
+//    //          WHERE `entity` = 'contact' 
+//    //          ORDER BY `sort_num`"; 
+//    //$results = $wpdb->get_results($query, ARRAY_A);  
+//    //foreach ($results as $result) { $data[] = $result['name']; }
+//    //return $data;
+//
+//    $data = [];
+//    $custom_field_options = dt_get_option( "dt_field_customizations" );
+//    if(isset($custom_field_options['contacts'])){
+//        foreach($custom_field_options['contacts'] as $cfopts){
+//            $data[] = $cfopts['name'];
+//        }
+//    }
+//    return $data;        
+//}
+    
+    //public static function get_contact_header_alias(){
+    //    $data = [];
+    //    global $wpdb;
+    //    $query = "SELECT `id`,`name` 
+    //              FROM `wp_dt_headers` 
+    //              WHERE `entity` = 'contact' 
+    //              ORDER BY `sort_num`";
+    //    $results = $wpdb->get_results($query, ARRAY_A);  
+    //    foreach ($results as $i=>$result) { 
+    //        $data[$i] = [
+    //            'id'=>$result['id'],
+    //            'label'=>$result['name']]; 
+    //
+    //        $query = "SELECT alias 
+    //                  FROM `wp_dt_headers_aliases` 
+    //                  WHERE entity = 'contact' 
+    //                  AND header_id = %s";
+    //
+    //        $aliases = $wpdb->get_results($wpdb->prepare($query,$result['id']), ARRAY_A);
+    //        foreach($aliases as $alias){
+    //            $data[$i]['alias'][] = $alias['alias'];
+    //        }
+    //    }
+    //    return $data;
+    //} */
+    
+    public static function get_mapper($name=''){        
+        /** //$column_name = '';
+//global $wpdb;         
+//$query = "SELECT wp_dt_headers.name 
+//    FROM wp_dt_headers_aliases, wp_dt_headers 
+//    WHERE wp_dt_headers_aliases.entity = 'contact' 
+//    AND wp_dt_headers.entity = 'contact' 
+//    AND wp_dt_headers_aliases.header_id = wp_dt_headers.id 
+//    AND wp_dt_headers_aliases.alias = %s";
+//$column_name = $wpdb->get_var( $wpdb->prepare( $query, $name ) );                
+//return $column_name; */     
+        
+        return self::colheadcompare($name);
+    }
+    
+    public static function colheadcompare ($source_col_heading){
+        $column_name = null;
+        $src = strtolower(trim($source_col_heading));
+        //echo "souce-heading:{$src}<br/>";
+        
+        if(array_search($src, self::$contact_name_headings)>0){ 
+            $column_name = 'title';         
+        } else if(array_search($src, self::$contact_phone_headings)>0){
+            $column_name = 'contact_phone';
+        } else if(array_search($src, self::$contact_email_headings)>0){
+            $column_name = 'contact_email';
+        } else if(array_search($src, self::$contact_address_headings)>0){
+            $column_name = 'contact_address';
+        } else if(array_search($src, self::$contact_gender_headings)>0){
+            $column_name = 'gender';
+        } else if(array_search($src, self::$contact_notes_headings)>0){
+            $column_name = 'cf_notes';
+        } else {
+            //get custom contact fields added by user
+            //$custom_field_options = dt_get_option( "dt_field_customizations" );
+            //if(isset($custom_field_options['contacts'][$src])){ 
+            //    $column_name = $src; 
+            //}
+            $fields = self::get_contact_fields();
+            if(isset($fields[$src])){ 
+                $column_name = $src;
+            } else {
+                $channels = Disciple_Tools_Contact_Post_Type::instance()->get_channels_list();
+                if(isset($channels[$src])){ 
+                    $column_name = $src;
+                }
+            }
+            
+            //try to match the field label
+            //assigned_to => ['name'=>"Assigned To"]
+            if($column_name==null){
+                foreach($fields as $f=>$field){
+                    
+                    if($src=='facebook'||$src=='twitter'||$src=='instagram'||$src=='skype'){
+                        
+                        if(isset($field['label'])&&strtolower(trim($field['label']))==$src){
+                            $column_name = $f;
+                        }                        
+                        
+                    } else {
+                    
+                        if(isset($field['name'])&&strtolower(trim($field['name']))==$src){
+                            $column_name = $f;
+                        }
+                    }
+                }            
+            }
+            
+            if($column_name==null){
+                $channels = Disciple_Tools_Contact_Post_Type::instance()->get_channels_list();
+                foreach($channels as $f=>$field){
+                    if(isset($field['name'])&&strtolower(trim($field['name']))==$src){
+                        $column_name = $f;
+                    }
+                }
+            }
+            
+            
+        }
+        
+        //echo "destination-column-name:{$column_name}";
+
+        return $column_name;
+    }
+
+    public static function getDropdownListHtml($field, $id='selector',$data=[],$selected=null,$htmlOptions=[],$allowAllTypes=true){
+        
+        if(isset($htmlOptions['id'])){ unset($htmlOptions['id']); }
+        
+        $html = "<select id=\"{$id}\"";  
+        
+        $html .= " data=\"".$field."\"";
+        
+        foreach($htmlOptions as $opt=>$values){
+            $html .= " {$opt}=\"{$values}\"";
+        }        
+        
+        $html .= ">";     
+        
+        if($field=='source'){
+            $site_custom_lists = dt_get_option( 'dt_site_custom_lists' );
+            foreach ( $site_custom_lists['sources'] as $key => $value ) {
+                if ( $value['enabled'] ) {
+                    $html .= "<option value=\"".esc_html( $key )."\">".esc_html( $value['label'] )."</option>";    
+                }
+            }
+            
+        } else {            
+////////////////////////////////////////////////////////////////////////////////
+        
+        $html .= "<option value=\"IGNORE\">--select-one--</option>";
+        
+        $channels = Disciple_Tools_Contact_Post_Type::instance()->get_channels_list();
+        $html .= "<optgroup label=\"Standard Fields\">";
+        
+        
+        $html .= "<option value=\"title\"";
+        if($selected=='title'){ $html .= " selected=\"selected\""; }
+        $html .= ">Contact Name</option>";
+        
+        foreach($channels as $label=>$item){ 
+            $html .= "<option value=\"contact_{$label}\"";
+            if($selected!=null && $selected=="contact_{$label}"){ $html .= " selected=\"selected\""; }
+            $html .= ">{$item['label']}</option>";
+        }
+        $html .= "</optgroup>"; 
+
+        $data = self::get_contact_fields();
+
+        $listData = array();
+        foreach($data as $key=>$item){   
+            $listData[$key] = $item['name'];
+        }
+        asort($listData);
+
+        $html .= "<optgroup label=\"Other Fields\">";
+        foreach($listData as $key=>$label){ 
+            $html .= "<option value=\"{$key}\"";
+            if($selected!=null && $selected==$key){ $html .= " selected=\"selected\""; }
+            $html .= ">";
+            $html .= "{$label}";
+            $html .= "</option>";
+        }
+        $html .= "</optgroup>";  
+////////////////////////////////////////////////////////////////////////////////
+        }
+        
+        $html .= '</select>';        
+        return $html;
+    }
+    
+    public static function process_data($dataRows, $csvHeaders, $assign, $source, $del){
+        
+        $people = [];
+        
+        foreach($csvHeaders as $ci=>$ch){
+            $_mc = self::get_mapper($ch);
+            if($_mc != null && strlen($_mc)>0){ $csvHeaders[$ci] = $_mc; }
+        } 
+        
+        foreach ($dataRows as $ri=>$row) { 
+            
+            $fields = [];
+            
+            foreach ($row as $index => $i) { 
+                
+                if ($assign != '') { $fields["assigned_to"] = (int) $assign; }                
+                $fields["sources"] = [ "values" => array( [ "value" => $source ] ) ];
+                
+                //cleanup
+                $i = str_replace( "\"", "", $i );
+            
+                if(isset($csvHeaders[$index])){
+                    $ch = $csvHeaders[$index];
+                 
+                    if($ch=='title'){
+                        $fields['title'] = $i;
+                        
+                    } else if($ch=='cf_gender'){
+
+                        $i = strtolower( $i );
+                        $i = substr( $i, 0, 1 );
+                        $gender = "not-set";
+                        if ($i == "m" ){ $gender = "male";
+                        } else if ($i == "f" ){ $gender = "female"; }
+                        $fields['cf_gender'] = $gender;
+                        
+                    } else if($ch=='cf_notes'){  
+                    //} else if($ch=='cf_notes'||$ch=='cf_dob'||$ch=='cf_join_date'){  
+                        $fields[$ch][] = $i;
+
+                    } else {
+                        
+                        if($del=='|'){
+                            $multivalued = explode($del, $i);
+                            foreach($multivalued as $mx){
+                               $fields[$ch][] = [ "value" => $mx ]; 
+                            }
+                        } else {
+                            $fields[$ch][] = [ "value" => $i ];                        
+                        }
+                    }                    
+                    
+
+                }                           
+            }          
+            
+            //add person
+            $people[] = array( $fields );
+            unset( $fields );
+
+        }
+        
+        return $people;
+    }
+    
+//public static function labelx($ch){
+//    $f = self::get_contact_fields();
+//    if(isset($f[$ch])){ return $f[$ch]; } else { return null; }
+//}
+
+    public static function display_data($people, $conHeadersInfo, $csvHeaders){
+        $html = '';        
+        
+        $html .= '<table class="data-table">';
+        $html .= '<thead>';
+        $html .= '<tr>';        
+        $html .= '<th></th>';
+        $html .= '<th>';
+        $html .= '<span class="cflabel">';
+        $html .= esc_html( translate( 'Contact Name', 'disciple_tools' ));        
+        $html .= '</span><br/>';
+        
+        $html .= '<span class="cffield">title</span>';
+        $html .= '</th> ';   
+        
+        
+        foreach($csvHeaders as $ci=>$ch){        
+        
+            if($ch=='title'){ continue; } 
+
+            $html .= '<th>';            
+            $html .= '<span class="cflabel">';
+            if(isset($conHeadersInfo[$ch]['name'])){ 
+                $html .= $conHeadersInfo[$ch]['name']; 
+            } else {
+                $html .= '<span style="color:red">UNMAPPED</span>';
+            }   
+            $html .= '</span><br/>';
+
+            $html .= '<span class="cffield">';
+            //$html .= esc_html( translate( 'Title', 'disciple_tools' ));
+            $html .= $ch;
+            $html .= '</span>';
+            $html .= '</th>';
+        }
+
+        $html .= '<th><span class="cflabel">';
+        $html .= esc_html( translate( 'Source', 'disciple_tools' ));        
+        $html .= '</span></th>';
+        
+        $html .= '<th><span class="cflabel">';
+        $html .= esc_html( translate( 'Assigned To', 'disciple_tools' ));        
+        $html .= '</span></th>';
+        $html .= '</tr>';
+        $html .= '</thead>';              
+        
+        $html .= '<tbody>';
+        
+        $rowindex=0;
+        foreach($people as $pid=>$pplData){ 
+            $rowindex++;
+            $personData = $pplData[0];
+
+            $html .= '<tr id="person-data-item-'.$pid.'" 
+                     class="person-data-item">'; 
+            
+            $html .= '<td>'.$rowindex.'</td>';
+            
+            $html .= '<td>';
+            $html .= $personData['title'];
+            $html .= '</td>';       
+
+            foreach($csvHeaders as $ci=>$ch){  
+
+                if($ch=='title'){ continue; }
+                $html .= '<td data-key="'.$ch.'">';
+
+                if($ch=='cf_gender'){
+                    if(isset( $personData[$ch] )){ $html .= esc_html( $personData[$ch] );                    
+                    } else { $html .= 'None'; }
+
+                } else if($ch=='cf_notes'){
+                //} else if($ch=='cf_notes'||$ch=='cf_dob'||$ch=='cf_join_date'){
+                    if(isset( $personData[$ch][0] )){ $html .= esc_html( $personData[$ch][0] );
+                    } else { $html .= 'None'; }
+
+                } else {
+
+                    if(isset( $personData[$ch][0]["value"] )){ 
+                        $html .= esc_html( $personData[$ch][0]["value"] );
+                    } else {
+                        $html .= 'None';
+                    }
+                }
+
+                $html .= '</td>';    
+            }
+
+
+            $html .= '<td>';
+            $html .= $personData['sources']["values"][0]["value"];
+            $html .= '</td>';
+
+            $html .= '<td>';        
+            if(( isset( $personData['assigned_to'] ) && $personData['assigned_to'] != '' )){
+                $html .= esc_html( get_user_by( 'id', $personData['assigned_to'] )->data->display_name );
+            } else { $html .= 'Not Set'; }        
+            $html .= '</td>';        
+            $html .= '</tr>';        
+        }
+        
+        $html .= '</tbody>';        
+        $html .= '</table>';       
+        
+        return $html;        
+    }
 }
