@@ -2985,8 +2985,9 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
         $data = [];      
         $channels = Disciple_Tools_Contact_Post_Type::instance()->get_channels_list();
 
-        foreach($channels as $label=>$channel){
-            $data['contact_'.$label] = ['name'=>$channel['label'], 'type'=>'standard', 'defaults'=>null];
+        foreach($channels as $label=>$channel){ 
+            $label = "contact_{$label}";  // @NOTE: prefix "contact_"          
+            $data[$label] = ['name'=>$channel['label'], 'type'=>'standard', 'defaults'=>null];
         }
         
         $fields = self::get_contact_fields();
@@ -3074,18 +3075,20 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
         $src = strtolower(trim($source_col_heading));
         //echo "souce-heading:{$src}<br/>";
         
+        // @NOTE: prefix "contact_"
+        $prefix = 'contact_';
+        
         if(array_search($src, self::$contact_name_headings)>0){ 
             $column_name = 'title';         
         } else if(array_search($src, self::$contact_phone_headings)>0){
-            $column_name = 'contact_phone';
+            $column_name = "{$prefix}phone"; 
+            
         } else if(array_search($src, self::$contact_email_headings)>0){
-            $column_name = 'contact_email';
+            $column_name = "{$prefix}email";
+            
         } else if(array_search($src, self::$contact_address_headings)>0){
-            $column_name = 'contact_address';
-        } else if(array_search($src, self::$contact_gender_headings)>0){
-            $column_name = 'gender';
-        } else if(array_search($src, self::$contact_notes_headings)>0){
-            $column_name = 'cf_notes';
+            $column_name = "{$prefix}address";             
+
         } else {
             //get custom contact fields added by user
             //$custom_field_options = dt_get_option( "dt_field_customizations" );
@@ -3098,26 +3101,17 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
             } else {
                 $channels = Disciple_Tools_Contact_Post_Type::instance()->get_channels_list();
                 if(isset($channels[$src])){ 
-                    $column_name = $src;
+                    //$column_name = $src;
+                    $column_name = "{$prefix}{$src}";
                 }
             }
             
             //try to match the field label
             //assigned_to => ['name'=>"Assigned To"]
             if($column_name==null){
-                foreach($fields as $f=>$field){
-                    
-                    if($src=='facebook'||$src=='twitter'||$src=='instagram'||$src=='skype'){
-                        
-                        if(isset($field['label'])&&strtolower(trim($field['label']))==$src){
-                            $column_name = $f;
-                        }                        
-                        
-                    } else {
-                    
-                        if(isset($field['name'])&&strtolower(trim($field['name']))==$src){
-                            $column_name = $f;
-                        }
+                foreach($fields as $f=>$field){                    
+                    if(isset($field['name'])&&strtolower(trim($field['name']))==$src){
+                        $column_name = $f;
                     }
                 }            
             }
@@ -3143,6 +3137,8 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
         
         if(isset($htmlOptions['id'])){ unset($htmlOptions['id']); }
         
+        $f = true;
+        
         $html = "<select id=\"{$id}\"";  
         
         $html .= " data=\"".$field."\"";
@@ -3151,32 +3147,29 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
             $html .= " {$opt}=\"{$values}\"";
         }        
         
-        $html .= ">";     
+        $html .= ">";   
         
-        if($field=='source'){
-            $site_custom_lists = dt_get_option( 'dt_site_custom_lists' );
-            foreach ( $site_custom_lists['sources'] as $key => $value ) {
-                if ( $value['enabled'] ) {
-                    $html .= "<option value=\"".esc_html( $key )."\">".esc_html( $value['label'] )."</option>";    
-                }
-            }
-            
-        } else {            
+        
+        $html .= "<option value=\"NONE\">--select-one--</option>";
+        $html .= "<option value=\"IGNORE\">don't import</option>";
+         
 ////////////////////////////////////////////////////////////////////////////////
         
-        $html .= "<option value=\"IGNORE\">--select-one--</option>";
-        
         $channels = Disciple_Tools_Contact_Post_Type::instance()->get_channels_list();
-        $html .= "<optgroup label=\"Standard Fields\">";
-        
+        $html .= "<optgroup label=\"Standard Fields\">";        
         
         $html .= "<option value=\"title\"";
         if($selected=='title'){ $html .= " selected=\"selected\""; }
         $html .= ">Contact Name</option>";
         
         foreach($channels as $label=>$item){ 
-            $html .= "<option value=\"contact_{$label}\"";
-            if($selected!=null && $selected=="contact_{$label}"){ $html .= " selected=\"selected\""; }
+            
+            //if($label=='phone'||$label=='email'||$label=='address'){
+                $label = "contact_{$label}";
+            //} // @NOTE: prefix "contact_"
+            
+            $html .= "<option value=\"{$label}\"";
+            if($selected!=null && $selected=="{$label}"){ $html .= " selected=\"selected\""; }
             $html .= ">{$item['label']}</option>";
         }
         $html .= "</optgroup>"; 
@@ -3191,33 +3184,108 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
 
         $html .= "<optgroup label=\"Other Fields\">";
         foreach($listData as $key=>$label){ 
-            $html .= "<option value=\"{$key}\"";
-            if($selected!=null && $selected==$key){ $html .= " selected=\"selected\""; }
-            $html .= ">";
-            $html .= "{$label}";
-            $html .= "</option>";
+            
+            $f = true; $type = null;            
+            
+            if(isset($data[$key]['type'])){ 
+                $type = $data[$key]['type']; 
+                if($data[$key]['type']=='multi_select'){
+                    $html .= " disabled=\"disabled\"";
+                    $f = false;
+                }
+            }
+            
+            if($f){
+                $html .= "<option value=\"{$key}\"";
+                if($selected!=null && $selected==$key){ 
+                    $html .= " selected=\"selected\""; 
+                }
+                $html .= ">";
+                $html .= "{$label}";
+                $html .= "</option>";
+            }
+            
+            
+
         }
         $html .= "</optgroup>";  
 ////////////////////////////////////////////////////////////////////////////////
-        }
+        
         
         $html .= '</select>';        
         return $html;
     }
-    
-    public static function process_data($dataRows, $csvHeaders, $assign, $source, $del){
+
+    public static function process_data(
+            $dataRows, 
+            $csvHeaders=[], 
+            $valueMapperiData=[], 
+            $valueMapperData=[], 
+            $assign='', 
+            $source='', 
+            $del=';'){
         
+//echo 'X<br/><pre>'; print_r($valueMapperiData); echo '</pre>'; echo '<hr>';
+//echo 'Y<br/><pre>'; print_r($valueMapperData); echo '</pre>'; echo '<hr>';
+//        
+        $mulSep = ';';
         $people = [];
+
+        $chi = array_count_values($csvHeaders);
         
         foreach($csvHeaders as $ci=>$ch){
             $_mc = self::get_mapper($ch);
-            if($_mc != null && strlen($_mc)>0){ $csvHeaders[$ci] = $_mc; }
+            if($_mc != null && strlen($_mc)>0){ 
+                $csvHeaders[$ci] = $_mc;   
+            }
         } 
         
-        foreach ($dataRows as $ri=>$row) { 
-            
+        //handle N columns to ONE column mapping
+        //phone(primary)/phone(mobile) -> phone
+        $mids = []; $delCsvHeaders = [];
+        foreach($chi as $mch=>$count){
+            if($count>1){
+                $mids[$mch]['count'] = $count;
+                foreach($csvHeaders as $ci=>$ch){
+                    if($mch==$ch){ 
+                        $mids[$mch]['columIds'][] = $ci;
+                    }
+                }
+                $mids[$mch]['primaryCol'] = $mids[$mch]['columIds'][0];
+                unset($mids[$mch]['columIds'][0]); //array_pop
+             }
+        }
+
+        foreach ($dataRows as $rowId=>$rowData) { 
+            foreach ($rowData as $colId => $colData){
+                if(isset($csvHeaders[$colId])){
+                    $ch = $csvHeaders[$colId];
+                    if(isset($mids[$ch]['columIds'])){
+                        foreach($mids[$ch]['columIds'] as $xcolid){
+                            if($colId==$xcolid){
+                                $dataRows[$rowId][ $mids[$ch]['primaryCol'] ] .= $mulSep.$colData;
+                                unset($dataRows[$rowId][$xcolid]);
+                            }
+                        }            
+                    } 
+                }  
+            }     
+        }
+
+        foreach($mids as $ch=>$xdata){
+            foreach($xdata['columIds'] as $xcolid){
+                if(isset($csvHeaders[$xcolid])){        
+                    unset($csvHeaders[$xcolid]);
+                }
+            }
+        }
+
+        $channels = Disciple_Tools_Contact_Post_Type::instance()->get_channels_list();
+        $cfs = Disciple_Tools_Contact_Post_Type::instance()->get_custom_fields_settings();
+
+        
+        foreach ($dataRows as $ri=>$row) {             
             $fields = [];
-            
             foreach ($row as $index => $i) { 
                 
                 if ($assign != '') { $fields["assigned_to"] = (int) $assign; }                
@@ -3225,40 +3293,70 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
                 
                 //cleanup
                 $i = str_replace( "\"", "", $i );
-            
+                            
                 if(isset($csvHeaders[$index])){
-                    $ch = $csvHeaders[$index];
-                 
+                    
+                    $ch = $csvHeaders[$index];                
+                    
+                    $type = isset($cfs[$ch]['type'])?$cfs[$ch]['type']:null;
+                    if($type==null){ $type = isset($channels[$ch])?$channels[$ch]:null; }
+                    
                     if($ch=='title'){
-                        $fields['title'] = $i;
+                        $fields[$ch] = $i;
                         
-                    } else if($ch=='cf_gender'){
+//                    } else if($ch=='gender'||$ch=='cf_gender'){
+//
+//                        $i = strtolower( $i );
+//                        $i = substr( $i, 0, 1 );
+//                        $gender = "not-set";
+//                        if ($i == "m" ){ $gender = "male";
+//                        } else if ($i == "f" ){ $gender = "female"; }
+//                        $fields[$ch] = $gender;           
+                    
+                    } else if($type=='key_select'){
 
-                        $i = strtolower( $i );
-                        $i = substr( $i, 0, 1 );
-                        $gender = "not-set";
-                        if ($i == "m" ){ $gender = "male";
-                        } else if ($i == "f" ){ $gender = "female"; }
-                        $fields['cf_gender'] = $gender;
+                        //$valueMapperData[$index]
+                        if(isset($valueMapperiData[$index])){
+                            foreach($valueMapperiData[$index] as $vmdi=>$vmdv){
+                                if($vmdv==$i && isset($valueMapperData[$index][$vmdi])){
+                                    $fields[$ch] = $valueMapperData[$index][$vmdi];
+                                }
+                            }
+                        }
+//
+//                    } else if($type=='multi_select'){
+//                        
+//                        //not handle yet!
+//                        
+//                    //} else if($type=='user_select'){
+//                    //    $fields[$ch] = $i;
+//                        
+                    } else if($type=='boolean'){
+                        $fields[$ch] = $i[0] === "1";
                         
-                    } else if($ch=='cf_notes'){  
-                    //} else if($ch=='cf_notes'||$ch=='cf_dob'||$ch=='cf_join_date'){  
-                        $fields[$ch][] = $i;
-
+                    } else if($type=='date'){
+                        $fields[$ch] = date('Y-m-d', strtotime($i));
+                        
+//                    } else if($type=='array'){//                        
+//                        foreach((array)$i as $av){
+//                            $fields[$ch][] = [ "value" => $av ];
+//                        }//                                            
+//                    //} else if($type=='text'){           
+//                    //} else if($type=='connection'){
                     } else {
                         
-                        if($del=='|'){
+                        //handle multivalued data
+                        $pos = strpos($i, $del);
+                        if ($pos === false) {
+                            $fields[$ch][] = [ "value" => $i ];
+                        } else {
                             $multivalued = explode($del, $i);
                             foreach($multivalued as $mx){
                                $fields[$ch][] = [ "value" => $mx ]; 
-                            }
-                        } else {
-                            $fields[$ch][] = [ "value" => $i ];                        
-                        }
-                    }                    
-                    
-
-                }                           
+                            }  
+                        } 
+                    }
+                } 
             }          
             
             //add person
@@ -3274,6 +3372,138 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
 //    $f = self::get_contact_fields();
 //    if(isset($f[$ch])){ return $f[$ch]; } else { return null; }
 //}
+    
+    public static function display_data2($people){
+        
+        if(isset($people[0][0])){
+            $headings = array_keys($people[0][0]);
+            //echo '<pre>'; print_r($headings); echo '</pre>';
+            //echo '<pre>'; print_r($people[0][0]); echo '</pre>';
+            if(isset($headings['sources'])){ unset($headings['sources']); }
+            if(isset($headings['assigned_to'])){ unset($headings['assigned_to']); }
+            //if(isset($headings['title'])){ unset($headings['title']); }
+        }
+        
+        $prefix = 'contact_';
+        $channels = Disciple_Tools_Contact_Post_Type::instance()->get_channels_list();
+        $cfs = Disciple_Tools_Contact_Post_Type::instance()->get_custom_fields_settings();        
+        
+        
+        $html = '';        
+        
+        $html .= '<table class="data-table">';
+        $html .= '<thead>';
+        $html .= '<tr>';        
+        $html .= '<th></th>';
+        
+        $html .= '<th>';
+        $html .= '<span class="cflabel">';
+        $html .= esc_html( translate( 'Contact Name', 'disciple_tools' ));        
+        $html .= '</span>';        
+        //$html .= '<br/><span class="cffield">title</span>';
+        $html .= '</th> '; 
+        
+        foreach($headings as $heading){
+            
+            if($heading=='title'){
+            } else if($heading=='assigned_to'){                    
+            } else if($heading=='sources'){                    
+            } else {
+
+                $html .= '<th><span class="cflabel">';
+                $ch = str_replace($prefix,'',$heading);
+                if(isset($cfs[$ch],$cfs[$ch]['name'])){
+                    $html .= esc_html( translate( $cfs[$ch]['name'], 'disciple_tools' ));                    
+                } else if(isset($channels[$ch],$channels[$ch]['label'])){
+                    $html .= esc_html( translate( $channels[$ch]['label'], 'disciple_tools' ));
+                }                
+                $html .= '</span>';                
+                
+                $html .= '<br/>';
+                $html .= '<span class="cffield">';
+                $html .= esc_html( translate( $heading, 'disciple_tools' )); 
+                $html .= '</span></th>';                            
+            }
+        }        
+        
+        $html .= '<th><span class="cflabel">';
+        $html .= esc_html( translate( 'Source', 'disciple_tools' ));        
+        $html .= '</span></th>';
+        
+        $html .= '<th><span class="cflabel">';
+        $html .= esc_html( translate( 'Assigned To', 'disciple_tools' ));        
+        $html .= '</span></th>';        
+        
+        $html .= '</tr>';
+        $html .= '</thead>';  
+        
+        
+        
+        $html .= '<tbody>';
+        
+        foreach($people as $pid=>$pplData){ 
+            $rowindex++;
+            $personData = $pplData[0];
+
+            $html .= '<tr id="person-data-item-'.$pid.'" 
+                     class="person-data-item">'; 
+            
+            $html .= '<td>'.$rowindex.'</td>';
+            
+            $html .= '<td>';
+            $html .= $personData['title'];
+            $html .= '</td>'; 
+        
+            
+            foreach($headings as $ch){
+
+                $type = isset($cfs[$ch]['type'])?$cfs[$ch]['type']:null;
+                if($type==null){ $type = isset($channels[$ch])?$channels[$ch]:null; }                
+
+                //if(isset( $personData[$ch][0]["value"] )){ 
+                    //$html .= esc_html( $personData[$ch][0]["value"] );
+                
+                if($ch=='title'){                    
+                } else if($ch=='assigned_to'){                    
+                } else if($ch=='sources'){
+                } else {
+                    
+                    $html .= '<td data-key="'.$ch.'">';
+                    if($type=='key_select'||$type=='date'||$type=='boolean'){
+                        $html .= esc_html( $personData[$ch]);
+
+                    } else if(isset($personData[$ch]) && is_array($personData[$ch])){
+
+                        foreach($personData[$ch] as $vi=>$val){
+                            if($vi>0){ $html .= $del; }
+                            $html .= esc_html( $val["value"] );
+                        }
+
+                    }
+                    $html .= '</td>';
+                } 
+            }            
+
+            $html .= '<td>';
+            $html .= $personData['sources']["values"][0]["value"];
+            $html .= '</td>';
+            
+
+            $html .= '<td>';        
+            if(( isset( $personData['assigned_to'] ) && $personData['assigned_to'] != '' )){
+                $html .= esc_html( get_user_by( 'id', $personData['assigned_to'] )->data->display_name );
+            } else { $html .= 'Not Set'; }        
+            $html .= '</td>';
+            
+            $html .= '</tr>';        
+        }
+        
+        $html .= '</tbody>';        
+        $html .= '</table>';       
+        
+        return $html;    
+        
+    }
 
     public static function display_data($people, $conHeadersInfo, $csvHeaders){
         $html = '';        
@@ -3297,7 +3527,9 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
 
             $html .= '<th>';            
             $html .= '<span class="cflabel">';
-            if(isset($conHeadersInfo[$ch]['name'])){ 
+            if($ch=='csv_source'){
+                $html .= '<span style="color:green">Source</span>';
+            } else if(isset($conHeadersInfo[$ch]['name'])){ 
                 $html .= $conHeadersInfo[$ch]['name']; 
             } else {
                 $html .= '<span style="color:red">UNMAPPED</span>';
@@ -3380,5 +3612,13 @@ class Disciple_Tools_Contacts extends Disciple_Tools_Posts
         $html .= '</table>';       
         
         return $html;        
+    }
+    
+    
+    public static function getAllDefaultValues(){
+        $data = array();
+        $data['channels'] = Disciple_Tools_Contact_Post_Type::instance()->get_channels_list();        
+        $data['fields'] = Disciple_Tools_Contact_Post_Type::instance()->get_custom_fields_settings();        
+        return $data;
     }
 }
