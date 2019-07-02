@@ -58,21 +58,6 @@ class Disciple_Tools_Contact_Import_Tab extends Disciple_Tools_Abstract_Menu_Bas
     public function instructions() {
         $this->box( 'top', 'Required Format' );
         ?>
-    
-        <?php /** 
-        <p><?php esc_html_e( "Your csv file needs to have the following columns:", 'disciple_tools' ) ?></p> */ ?>
-
-        <p>
-        <pre>
-        <?php 
-        
-        var_dump(Disciple_Tools_Contact_Post_Type::instance()->get_channels_list()); 
-        
-        ?><hr/><?php
-        var_dump(Disciple_Tools_Contact_Post_Type::instance()->get_custom_fields_settings()); 
-        ?>
-        </pre>
-        </p>
 
         <p><?php esc_html_e( "use utf-8 file format", 'disciple_tools' ) ?></p>       
         <?php
@@ -143,6 +128,10 @@ class Disciple_Tools_Contact_Import_Tab extends Disciple_Tools_Abstract_Menu_Bas
             
             if ( isset( $_POST[ "csv_mapper" ], $_POST[ "csv_data" ]) ) {
                 $mappingData = $_POST[ "csv_mapper" ];
+                
+                $valueMapperiData = isset($_POST['VMD'])?$_POST['VMD']:[];
+                $valueMapperData = isset($_POST['VM'])?$_POST['VM']:[];
+                
                 //$mappingData = unserialize( base64_decode( $_POST[ "csv_mapper" ] ) );
                 $csvData = unserialize( base64_decode( $_POST[ "csv_data" ] ) );
                 $csvHeaders = unserialize( base64_decode( $_POST[ "csv_headers" ] ) );
@@ -151,7 +140,9 @@ class Disciple_Tools_Contact_Import_Tab extends Disciple_Tools_Abstract_Menu_Bas
                         sanitize_text_field( wp_unslash( $_POST[ 'csv_del_temp' ] ) ), 
                         sanitize_text_field( wp_unslash( $_POST[ 'csv_source_temp' ] ) ), 
                         sanitize_text_field( wp_unslash( $_POST[ 'csv_assign_temp' ] ) ), 
-                        $mappingData);                
+                        $mappingData,
+                        $valueMapperiData,
+                        $valueMapperData);                
                 exit;
             }            
         }
@@ -265,43 +256,61 @@ class Disciple_Tools_Contact_Import_Tab extends Disciple_Tools_Abstract_Menu_Bas
         </form>
 
 
-        <script>
-//function setDel(){
-//    if (document.getElementById('csv_multivalued').checked) {
-//        document.getElementById('csv_del').value = '|';
-//        //document.getElementById("csv_del").readOnly = true;
-//        document.getElementById("csv_del").setAttribute("readonly", true);
-//    } else {
-//        //document.getElementById("csv_del").readOnly = false;
-//        document.getElementById("csv_del").removeAttribute("readonly");
-//    }
-//}
-//
-//function deactMV(){
-//    document.getElementById('csv_multivalued').checked = false;
-//}
-        </script>
+        <?php /** <script>
+        //function setDel(){
+        //    if (document.getElementById('csv_multivalued').checked) {
+        //        document.getElementById('csv_del').value = '|';
+        //        //document.getElementById("csv_del").readOnly = true;
+        //        document.getElementById("csv_del").setAttribute("readonly", true);
+        //    } else {
+        //        //document.getElementById("csv_del").readOnly = false;
+        //        document.getElementById("csv_del").removeAttribute("readonly");
+        //    }
+        //}
+        //
+        //function deactMV(){
+        //    document.getElementById('csv_multivalued').checked = false;
+        //}
+        </script> */ ?>
 
         <?php
         $this->box( 'bottom' );
     }
     
-    public function mapping_mod($csvData, $csvHeaders, $del = ',', $source = 'web', $assign = '', $mappingData = []) {     
+    public function mapping_mod($csvData, $csvHeaders, $del = ',', $source = 'web', $assign = '', $mappingData = [], $valueMapperiData = [], $valueMapperData = []) {     
+        
         $conHeadersInfo = Disciple_Tools_Contacts::get_contact_header_info();  
-        foreach((array)$mappingData as $_i=>$_d){ if($_d=='IGNORE'){ unset($mappingData[$_i]); } }
-        $proceed = true; $CD = []; for($_i=0;$_i<count((array)$mappingData);$_i++){
-            $_v = $mappingData[$_i]; $_c = 0;
-            foreach((array)$mappingData as $_j=>$_d){ if($_d == $_v){ $_c++; } }
-            $CD[$_i] = $_c; 
-        }        
         
-        foreach((array)$CD as $_v){ if($_v>1){ $proceed = $proceed && false; } }        
-        if(!$proceed){ die('Mapping Error! ERR'.__LINE__); }
+        //remove unmapped data columns + header
+        foreach((array)$mappingData as $_i=>$_d){ if($_d=='IGNORE'||$_d=='NONE'){ unset($mappingData[$_i]); } }
+        //$proceed = true; $CD = []; for($_i=0;$_i<count((array)$mappingData);$_i++){
+        //    $_v = $mappingData[$_i]; $_c = 0;
+        //    foreach((array)$mappingData as $_j=>$_d){ if($_d == $_v){ $_c++; } }
+        //    $CD[$_i] = $_c; 
+        //}        
+        //
+        //foreach((array)$CD as $_v){ if($_v>1){ $proceed = $proceed && false; } }        
+        //if(!$proceed){ die('Mapping Error! ERR'.__LINE__); }
+
         
+//echo '$csvData<br/>'; echo '<pre>'; print_r($csvData); echo '</pre>'; echo '<hr/>';
+//echo '$mappingData<br/>'; echo '<pre>'; print_r($mappingData); echo '</pre>'; echo '<hr/>';
+//echo '$valueMapperiData<br/>'; echo '<pre>'; print_r($valueMapperiData); echo '</pre>'; echo '<hr/>';
+//echo '$valueMapperData<br/>'; echo '<pre>'; print_r($valueMapperData); echo '</pre>'; echo '<hr/>';
+//
+//echo '$assign<br/>'; echo '<pre>'; print_r($assign); echo '</pre>'; echo '<hr/>';
+//echo '$source<br/>'; echo '<pre>'; print_r($source); echo '</pre>'; echo '<hr/>';
+//echo '$del<br/>'; echo '<pre>'; print_r($del); echo '</pre>'; echo '<hr/>';
+//        
+//echo '>>>'.__LINE__.'<br/>';
         
+        $people = Disciple_Tools_Contacts::process_data($csvData, $mappingData, $valueMapperiData, $valueMapperData, $assign, $source, $del);
         
-        $people = Disciple_Tools_Contacts::process_data($csvData, $mappingData, $assign, $source, $del);
-        $html = Disciple_Tools_Contacts::display_data($people, $conHeadersInfo, $mappingData);
+//echo 'Data:<br/>';
+//echo '<pre>'; var_dump($people); echo '</pre>';
+        
+        //$html = Disciple_Tools_Contacts::display_data($people, $conHeadersInfo, $mappingData);
+        $html = Disciple_Tools_Contacts::display_data2($people);
         echo $html;
         ?>     
         
@@ -328,6 +337,7 @@ class Disciple_Tools_Contact_Import_Tab extends Disciple_Tools_Abstract_Menu_Bas
      * @param string $header yes/no
      */
     public function import_csv( $file, $del = ',', $source = 'web', $assign = '', $header = "yes") {
+        
         $people = [];
         //open file
         ini_set( 'auto_detect_line_endings', true );
@@ -337,6 +347,8 @@ class Disciple_Tools_Contact_Import_Tab extends Disciple_Tools_Abstract_Menu_Bas
         while ( $row = fgetcsv( $file_data, 0, $del,'"','"' ) ) {
             $dataRows[] = $row;
         }
+        
+        $_opt_fields = Disciple_Tools_Contacts::getAllDefaultValues();
         
         $conHeadersInfo = Disciple_Tools_Contacts::get_contact_header_info(); //echo '<pre>'; var_dump($conHeadersInfo); 
         $conHeadersInfoKeys = array_keys($conHeadersInfo);
@@ -416,52 +428,164 @@ class Disciple_Tools_Contact_Import_Tab extends Disciple_Tools_Abstract_Menu_Bas
 
         }
 /******************************************************************************/
-        
-        //$people = Disciple_Tools_Contacts::process_data($dataRows, $csvHeaders, $assign, $source, $del);
-        
+       
         
         //close the file
         fclose( $file_data );
+        
+        $unique = array();
+        foreach($csvHeaders as $ci=>$ch){
+            foreach ($dataRows as $ri=>$row) {
+                $unique[$ci][] = $row[$ci];
+            }
+        }
+        
+        foreach($unique as $ci=>$list){            
+            $unique[$ci] = array_unique($list); 
+            asort($unique[$ci]);
+        }
+        
+        
         ?>
-
+        
+        <?php /** <pre><?php print_r($conHeadersInfo); ?></pre> */ ?>
 
         <h1><?php echo esc_html_e( "Mapper", 'disciple_tools' ); ?></h1>
 
         
-        <p><strong>Imporant!</strong> Unmapped Columns Data will be skipped</p>
+        <p><strong>Important!</strong> Unmapped Columns Data will be skipped</p>
+        
+        <?php /** <p>
+            <strong>Map import values to DT values</strong><br/>
+            <small>
+            [selected DT fieldname] only accepts specific values (as a Selection). 
+            Please map following unique values from your data to existing values in DT. 
+            You can add new values into the DT system if you want by first ...
+            </small>
+        </p>  */ ?>
 
         <form method="post" enctype="multipart/form-data">
         <?php wp_nonce_field( 'csv_mappings', 'csv_mappings_nonce' ); ?>
+            
+        <div class="mapper-table-container">
         <table class="mapper-table">
-            <tr> <th>Source (Exported File)</th> <th>Destination (DT)</th> </tr>
+        <thead>
+            <tr> 
+                <th valign="top"> Source (Imported File) </th> 
+                <th valign="top"> Destination (DT) </th> 
+                <th valign="top"> Unique Values/Mapper </th>
+            </tr>
+        </thead>
+        
+        <tbody>        
         <?php
 
         //correct csv headers
-        foreach($csvHeaders as $ci=>$ch){
-            ?>
-            <tr>
-                <th data="<?php echo $ch ?>"><?php 
+        foreach($csvHeaders as $ci=>$ch):
+            
+            $colDataType = isset($_opt_fields['fields'][$ch]['type'])?$_opt_fields['fields'][$ch]['type']:null;
+                
+                $mapperTitle = '';
                 if(isset($conHeadersInfo[$ch]['name'])){
-                    echo $conHeadersInfo[$ch]['name'];
+                    $mapperTitle = $conHeadersInfo[$ch]['name'];
                 } else if($ch=='title'){
-                    echo 'Contact Name';
+                    //$mapperTitle = 'Contact Name';
+                    $mapperTitle = ucwords($ch);
                 } else {
-                    echo "<span style=\"color:red\" title=\"un-mapped data column\">{$ch}</span>";
+                    //$mapperTitle = "<span style=\"color:red\" title=\"un-mapped data column\">{$ch}</span>";
+                    $mapperTitle = "<span class=\"unmapped\" title=\"un-mapped data column\">{$ch}</span>";
                 }
-                ?></th>
-                <td>
+        
+            ?>
+            <tr class="mapper-coloumn" data-row-id="<?php echo $ci ?>">
+
+                <th data-field="<?php echo $ch ?>" class="src-column">
+                <?= $mapperTitle ?>
+                </th>
+                
+                
+                <td class="dest-column">
                     <?= Disciple_Tools_Contacts::getDropdownListHtml($ch,"csv_mapper_{$ci}",$conHeadersInfo,$ch,[
                         'name'=>"csv_mapper[{$ci}]", 
                         'class'=>'cf-mapper', 
-                        'onchange'=>"check_column_mappings({$ci})"],true) ?>
+                        //'onchange'=>"check_column_mappings({$ci})"
+                        'onchange'=>"getDefaultValues({$ci})"
+                        ],true) ?>
+                    <div id="helper-fields-<?= $ci ?>" class="helper-fields"<?php if($colDataType!='key_select'): ?> style="display:none"<?php endif; ?>></div>
                 </td>
-            </tr>                
-            <?php
-        }
 
-        ?>
+                
+                <td class="mapper-column">
+                <div id="unique-values-<?= $ci ?>" 
+                    class="unique-values"
+                    data-id="<?= $ci ?>"
+                    data-type="<?= $colDataType ?>"
+                    <?php if($colDataType!='key_select'): ?> style="display:none"<?php endif; ?>>
+                    
+                    <div class="mapper-helper-text">
+                        <span class="mapper-helper-title">Map import values to DT values</span><br/>
+                        <span class="mapper-helper-description">
+                            <span class="selected-mapper-column-name"><?= $mapperTitle ?></span> 
+                            only accepts specific values (as a Selection). 
+                            Please map following unique values from your data to existing values in DT. 
+                            You can add new values into the DT system if you want by first ...</span>
+                    </div>
+
+                   <?php if(isset($unique[$ci])): ?> 
+                   <table>
+                       
+                   <?php foreach($unique[$ci] as $vi=>$v): ?>
+                       
+                       <tr>
+                           <td>
+                               <?php if(strlen(trim($v))>0): ?>
+                                    <?= $v ?>
+                                <?php else: ?>
+                                    <span class="empty">Empty</span>
+                                <?php endif; ?>
+                           </td>
+                           
+                           
+                           <td>  
+                               
+                               <input name="VMD[<?= $ci ?>][<?= $vi ?>]" type="hidden" value="<?= $v ?>" />
+                               
+                               <select id="value-mapper-<?= $ci ?>-<?= $vi ?>" 
+                                       name="VM[<?= $ci ?>][<?= $vi ?>]" 
+                                       class="value-mapper-<?= $ci ?>" 
+                                       data-value="<?= $v ?>">
+                               <option>--Not Selected--</option>
+                               <?php /**/ ?>
+                               <?php if(isset($_opt_fields['fields'][$ch]['default'])): ?>                               
+                               <?php foreach($_opt_fields['fields'][$ch]['default'] as $di=>$dt): ?>
+                                   <option value="<?= $di ?>"<?php if($di==$v): ?> selected="selected"<?php endif; ?>><?= $dt['label'] ?></option>
+                               <?php endforeach; ?>
+                               <?php endif; ?> 
+                               <?php /***/ ?>                                   
+                               </select>    
+                               
+                               
+
+
+                           </td>
+                       </tr>
+                       
+                   <?php endforeach; ?> 
+                       
+                   </table>
+                    
+                   <?php endif; ?> 
+                </div>
+                </td>
+
+                
+            </tr>                
+            <?php  endforeach; ?>
+        </tbody>    
+            
+        <tfoot>
             <tr><td></td>
-                <td>
+                <td colspan="2">
 
 
                     <input type="hidden" name="csv_data" value="<?php echo esc_html( base64_encode( serialize( $tempContactsData ) ) ); ?>">
@@ -470,6 +594,7 @@ class Disciple_Tools_Contact_Import_Tab extends Disciple_Tools_Abstract_Menu_Bas
                     <input type="hidden" name="csv_source_temp" value='<?= $source ?>' />
                     <input type="hidden" name="csv_assign_temp" value='<?= $assign ?>' />
 
+                    <?php wp_nonce_field( 'csv_mapping', 'csv_mapping_nonce' ); ?>
                     
                     <input type="submit" name="submit" id="submit" 
                            style="background-color:#4CAF50; color:white" 
@@ -478,11 +603,53 @@ class Disciple_Tools_Contact_Import_Tab extends Disciple_Tools_Abstract_Menu_Bas
 
                 </td>
             </tr>
+        </tfoot>    
         </table>
-        </form>    
+        </div>    
+            
+            
+        <?php //$_opt_fields = Disciple_Tools_Contacts::getAllDefaultValues(); ?>            
+
+        <div class="helper-fields-txt" style="display:none">
+        <?php foreach($_opt_fields['fields'] as $_fi=>$_flds): ?>
+        <div id="helper-fields-<?= $_fi ?>-txt" data-type="<?= $_flds['type'] ?>">
+
+            <span>Field: <strong><?= $_fi ?></strong></span><br/>
+            <span>Type: <strong><?= $_flds['type'] ?></strong></span><br/>
+            <span>Description: <strong><?= $_flds['description'] ?></strong></span><br/>
+
+            <?php if($_flds['type']=='key_select'||$_flds['type']=='multi_select'): ?>
+
+            <span>Value:</span><br/>
+            <ul class="default-value-options">
+            <?php asort($_flds['default']); ?>    
+            <?php foreach($_flds['default'] as $di=>$dt): ?>
+            <li>
+                <strong><span class="hlp-value"><?= $di ?></span></strong>:
+                <span class="hlp-label"><?= $dt['label'] ?></span>
+            </li>
+            <?php endforeach; ?>
+            </ul>
+
+            <?php else: ?>
+            <span>Value: <strong><?= $_flds['default'] ?></strong></span><br/>   
+            <?php endif; ?>    
+
+        </div>
+        <?php endforeach; ?>   
+        </div>
+            
+        </form>
+        
+        
+
         
         
         <script type="text/javascript">
+            
+            jQuery(document).ready(function(){
+                getAllDefaultValues();
+            });
             
             function check_column_mappings(id){
                 //console.log('check_column_mappings');
@@ -497,13 +664,83 @@ class Disciple_Tools_Contact_Import_Tab extends Disciple_Tools_Abstract_Menu_Bas
                     if(i!=id && selectedValue==elements[i].value){
                         //console.log('IND:' + i + ' ID:' + elements[i].id + ' VALUE:' + elements[i].value);
                         selected.selectedIndex = 'IGNORE';
-                        alert('Already Mapped!');
-                        
+                        if(elements[i].value!='IGNORE'){
+                            alert('Already Mapped!');
+                        }                       
                     }
                 }
+            }            
+            
+            function getAllDefaultValues(){                
+                jQuery('.mapper-table tbody > tr.mapper-coloumn').each(function(){
+                    //console.log('C:'+jQuery(this).attr('data-row-id'));
+                    var i = jQuery(this).attr('data-row-id');
+                    if(typeof i !== 'undefined'){ getDefaultValues(i); }
+                });                
             }
             
-            
+            function getDefaultValues(id){                
+
+                var selected, selectedValue, dom, ty, hlp;
+                selected = document.getElementById('csv_mapper_'+id);
+                selectedValue = selected.options[selected.selectedIndex].value;
+                
+                jQuery('.helper-fields').hide().html(''); 
+                //jQuery
+
+                //console.log('id:' + id + ' v:'+ selectedValue);
+                
+                //hlp = document.getElementById('helper-fields-'+selectedValue+'-txt').innerHTML;
+                //document.getElementById('helper-fields-'+id).innerHTML = hlp;
+                
+                dom = jQuery('#helper-fields-'+selectedValue+'-txt');                
+                ty = dom.attr('data-type');
+                
+                if(ty == 'key_select'){
+                    hlp = dom.html(); //console.log('hlp:' + hlp);
+                    
+                    jQuery('#unique-values-'+id).show();
+                    jQuery('#unique-values-'+id).find('.selected-mapper-column-name').html( jQuery('#csv_mapper_'+id).val() );
+                    jQuery('#helper-fields-'+id).html( hlp ).show();
+                    
+                    jQuery('.value-mapper-'+id).html('');
+                    
+                    jQuery('.value-mapper-'+id).append('<option>--select--</option>');
+                    
+                    //h_sel = jQuery('.value-mapper-'+id).attr('data-value');
+                    
+                    //default-value-options
+                    jQuery.each( dom.find('.default-value-options li'), function(i,v){
+                        var h_this, h_value, h_label, h_html, h_sel;
+                        h_this = jQuery(this);
+                        h_value = h_this.find('.hlp-value').html();
+                        h_label = h_this.find('.hlp-label').html();
+                        if(!h_label.length>0){ h_label = h_value.toUpperCase(); }
+                        //console.log('id:' +i+' value:'+h_value+' label:'+h_label);                        
+                        
+                        
+                        h_html = '<option value="'+h_value+'"'; 
+                        //if(h_sel==h_value){ h_html = h_html + ' selected="selected"'; }
+                        h_html = h_html + '>'+h_label+'</option>';
+                        
+                        jQuery('.value-mapper-'+id).append(h_html);
+                    });
+                    
+                    jQuery('.value-mapper-'+id).each(function(){
+                        h_sel = jQuery(this).attr('data-value');
+                        
+                        jQuery(this).find('option').each(function(){
+                            if(h_sel==jQuery(this).attr('value')){
+                                jQuery(this).attr('selected','selected');
+                            }
+                        });
+                        
+                    });
+                    
+                } else {
+                    jQuery('#unique-values-'+id).hide();
+                }
+            }
             
         </script>    
 
@@ -597,6 +834,10 @@ echo $html;
     }
 
     private function insert_contacts( $contacts) {
+        
+        /** ?><pre><?php var_dump($contacts) ?></pre><br/><pre><?php print_r($contacts) ?></pre><?php         
+        die('ENGINE-DIED! ERROR'.__LINE__); */
+        
         set_time_limit( 0 );
         global $wpdb;
         ?>
@@ -703,5 +944,7 @@ echo $html;
         <?php
         exit;
     }
+    
+
 }
 Disciple_Tools_Contact_Import_Tab::instance();
